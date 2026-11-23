@@ -1,0 +1,33 @@
+# Name used in the URL / certificate. *.localhost resolves to 127.0.0.1 in browsers and curl.
+host: n8n.localhost
+# Local port of `make tunnel` (kubectl port-forward); part of the public URL n8n renders.
+localPort: 8443
+
+image:
+  repository: n8nio/n8n
+  tag: "2.48.7"
+  pullPolicy: IfNotPresent
+
+timezone: Europe/Prague
+
+persistence:
+  size: 5Gi
+  storageClass: ""          # "" = cluster default (microk8s-hostpath)
+
+tls:
+  caCommonName: n8n-private local CA
+  caDuration: 87600h        # 10 years
+  duration: 8760h           # 1 year; n8n reads the cert at start, `make up` restarts it after renewal
+  renewBefore: 720h
+
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { memory: 1Gi }
+
+# Trust an extra CA (e.g. the in-cluster llmgw gateway's private CA) without disabling TLS
+# verification: ConfigMap with key ca.crt in this namespace (`make llm-connect` creates "llmgw-ca").
+extraCA:
+  configMap: ""
+
+# Extra n8n environment variables (https://docs.n8n.io/hosting/configuration/environment-variables/)
+extraEnv: {}

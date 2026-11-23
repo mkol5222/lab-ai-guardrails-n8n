@@ -1,0 +1,29 @@
+{
+  // Lab devcontainer: kind cluster inside Docker-in-Docker, no tools needed on the host.
+  // Works with VS Code "Reopen in Container", the devcontainer CLI, and (later) GitHub Codespaces.
+  "name": "lab-ai-guardrails-n8n lab (kind)",
+  "build": { "dockerfile": "Dockerfile" },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "version": "latest", "moby": false }
+  },
+  "containerEnv": { "CLUSTER": "kind" },
+  // Full lab (kind + n8n + llmgw + cert-manager) uses ~3.5 GiB. 6gb fits a Docker Desktop VM set to 8 GB
+  // (reported as ~7.65 GiB). In Codespaces, cpus: 4 selects the 4-core / 16 GB machine.
+  "hostRequirements": { "cpus": 4, "memory": "6gb", "storage": "32gb" },
+  // Creates the kind cluster on first start, restarts it after a container restart.
+  "postStartCommand": "make -C kind up",
+  // `make tunnel` binds 127.0.0.1 inside the container; the editor forwards these ports to the host.
+  "forwardPorts": [8443, 4443, 9443],
+  "portsAttributes": {
+    "8443": { "label": "n8n (make -C n8n tunnel)", "protocol": "https", "onAutoForward": "notify" },
+    "4443": { "label": "llmgw (make -C llmgw tunnel)", "protocol": "https", "onAutoForward": "silent" },
+    "9443": { "label": "nginx demo (make -C nginx tunnel)", "protocol": "https", "onAutoForward": "silent" }
+  },
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-kubernetes-tools.vscode-kubernetes-tools", "redhat.vscode-yaml"],
+      "settings": { "terminal.integrated.defaultProfile.linux": "bash" }
+    }
+  }
+}

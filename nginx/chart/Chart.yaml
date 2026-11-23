@@ -1,0 +1,6 @@
+apiVersion: v2
+name: podname-web
+description: nginx web server showing the serving pod's name, HTTPS via Traefik ingress with a cert-manager self-signed CA
+type: application
+version: 0.1.0
+appVersion: "1.31.7"

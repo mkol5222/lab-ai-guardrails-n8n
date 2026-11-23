@@ -1,0 +1,74 @@
+#cloud-config
+# Rendered by terraform (templatefile). Bash "$${x}" is escaped as "$$${x}" here.
+package_update: true
+package_upgrade: true
+packages:
+  - jq
+  - curl
+  - ca-certificates
+  - bash-completion
+ssh_pwauth: false
+
+write_files:
+  - path: /usr/local/sbin/mk8s-setup
+    permissions: "0700"
+    owner: root:root
+    content: |
+      #!/bin/bash
+      # First-boot provisioning: console password, MicroK8s, k9s, kubeconfig for the admin user.
+      # Progress: /var/log/mk8s-setup.log, result: /var/lib/mk8s-setup/status.json
+      set -euo pipefail
+      U='${admin_username}'
+      CHANNEL='${microk8s_channel}'
+      ADDONS='${microk8s_addons}'
+      K9S_VERSION='${k9s_version}'
+      STATE=/var/lib/mk8s-setup
+      mkdir -p "$STATE"
+      exec >>/var/log/mk8s-setup.log 2>&1
+      trap 'rc=$?; printf "{\"done\":true,\"exit_code\":%d,\"finished\":\"%s\"}\n" "$rc" "$(date -Is)" > "$STATE/status.json"' EXIT
+      retry() { local n=0; until "$@"; do n=$((n+1)); [ "$n" -ge 5 ] && return 1; echo "retry $n: $*"; sleep $((n*10)); done; }
+      echo "=== mk8s-setup start $(date -Is)"
+
+      # Serial-console password (bcrypt hash only; SSH stays key-only).
+      usermod -p '${password_hash}' "$U"
+
+      # k9s from the official GitHub release, verified against its checksums file.
+      arch=$(dpkg --print-architecture)
+      ver="$K9S_VERSION"
+      if [ "$ver" = latest ]; then
+        ver=$(retry curl -fsSL https://api.github.com/repos/derailed/k9s/releases/latest | jq -r .tag_name)
+      fi
+      tmp=$(mktemp -d)
+      f="k9s_Linux_$${arch}.tar.gz"
+      base="https://github.com/derailed/k9s/releases/download/$${ver}"
+      retry curl -fsSL -o "$tmp/$f" "$base/$f"
+      retry curl -fsSL -o "$tmp/checksums.sha256" "$base/checksums.sha256"
+      (cd "$tmp" && grep -E "  $${f}\$" checksums.sha256 | sha256sum -c -)
+      tar -xzf "$tmp/$f" -C "$tmp" k9s
+      install -m 0755 "$tmp/k9s" /usr/local/bin/k9s
+      rm -rf "$tmp"
+      echo "k9s $ver installed"
+
+      # MicroK8s
+      retry snap install microk8s --classic --channel="$CHANNEL"
+      microk8s status --wait-ready --timeout 600
+      for a in $ADDONS; do retry microk8s enable "$a"; done
+      usermod -aG microk8s "$U"
+      snap alias microk8s.kubectl kubectl
+      snap alias microk8s.helm helm || true
+
+      # kubeconfig for the admin user (k9s, kubectl) + shell niceties
+      h=$(getent passwd "$U" | cut -d: -f6)
+      install -d -m 0700 -o "$U" -g "$U" "$h/.kube"
+      microk8s config > "$h/.kube/config"
+      chown "$U:$U" "$h/.kube/config"; chmod 0600 "$h/.kube/config"
+      microk8s kubectl completion bash > /etc/bash_completion.d/kubectl
+      grep -q '# mk8s' "$h/.bashrc" || cat >> "$h/.bashrc" <<'RC'
+      # mk8s
+      alias k=kubectl
+      complete -o default -F __start_kubectl k 2>/dev/null || true
+      RC
+      echo "=== mk8s-setup done $(date -Is)"
+
+runcmd:
+  - [/usr/local/sbin/mk8s-setup]

@@ -1,0 +1,2 @@
+LiteLLM gateway (after `make tunnel`): https://{{ .Values.host }}:{{ .Values.localPort }}/
+Models: {{ len .Values.models }} OpenRouter free model(s); Lakera Guard on input (pre_call) and output (post_call).

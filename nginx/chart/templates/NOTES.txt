@@ -1,0 +1,2 @@
+URL: https://{{ .Values.host }}/
+Certificate: self-signed CA "{{ .Values.tls.caCommonName }}" (export it with `make ca`, verify with `make test`).

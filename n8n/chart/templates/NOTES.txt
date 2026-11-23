@@ -1,0 +1,2 @@
+n8n URL (after `make tunnel`): {{ include "n8n.url" . }}
+Not exposed outside the cluster: no Ingress, ClusterIP service only.

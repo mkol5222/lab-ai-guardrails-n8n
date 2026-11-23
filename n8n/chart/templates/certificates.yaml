@@ -1,0 +1,45 @@
+{{- $name := include "n8n.name" . -}}
+# selfSigned bootstrap -> private CA -> CA issuer -> server certificate mounted into n8n.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ $name }}-selfsigned
+  labels: {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}-ca
+  labels: {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  isCA: true
+  commonName: {{ .Values.tls.caCommonName | quote }}
+  secretName: {{ $name }}-ca
+  duration: {{ .Values.tls.caDuration }}
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: {{ $name }}-selfsigned, kind: Issuer }
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ $name }}-ca
+  labels: {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: {{ $name }}-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}-tls
+  labels: {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  secretName: {{ $name }}-tls
+  dnsNames: [{{ .Values.host | quote }}, localhost]
+  ipAddresses: [127.0.0.1]
+  duration: {{ .Values.tls.duration }}
+  renewBefore: {{ .Values.tls.renewBefore }}
+  privateKey: { algorithm: ECDSA, size: 256, rotationPolicy: Always }
+  issuerRef: { name: {{ $name }}-ca, kind: Issuer }

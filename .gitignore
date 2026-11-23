@@ -1,0 +1,12 @@
+# Local state: kubeconfigs, exported CAs, keys (never commit)
+.state/
+**/.state/
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+*.tfvars
+crash.log
+# OS / editor
+.DS_Store

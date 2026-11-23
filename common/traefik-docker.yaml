@@ -1,0 +1,26 @@
+# Traefik for Docker Desktop: same chart/namespace/IngressClass as the MicroK8s ingress addon,
+# but nothing is published on the Mac (ClusterIP service, no hostPorts, no dashboard).
+# Reached only via `make tunnel` (kubectl port-forward to 127.0.0.1).
+deployment:
+  kind: Deployment
+service:
+  type: ClusterIP
+ports:
+  web:
+    port: 8000
+    exposedPort: 80
+  websecure:
+    port: 8443
+    exposedPort: 443
+ingressRoute:
+  dashboard:
+    enabled: false
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesGateway:
+    enabled: false

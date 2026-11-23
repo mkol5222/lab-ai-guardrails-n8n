@@ -1,0 +1,45 @@
+{{- $name := include "web.name" . -}}
+# Self-signed bootstrap issuer -> private CA -> CA issuer -> leaf certificate for the host.
+# The CA is exported by `make ca` so clients verify TLS properly (no -k / insecure flags).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ $name }}-selfsigned
+  labels: {{- include "web.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}-ca
+  labels: {{- include "web.labels" . | nindent 4 }}
+spec:
+  isCA: true
+  commonName: {{ .Values.tls.caCommonName | quote }}
+  secretName: {{ $name }}-ca
+  duration: {{ .Values.tls.caDuration }}
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: {{ $name }}-selfsigned, kind: Issuer }
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ $name }}-ca
+  labels: {{- include "web.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: {{ $name }}-ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $name }}-tls
+  labels: {{- include "web.labels" . | nindent 4 }}
+spec:
+  secretName: {{ $name }}-tls
+  dnsNames: [{{ required "host is required (VM FQDN)" .Values.host | quote }}]
+  duration: {{ .Values.tls.duration }}
+  renewBefore: {{ .Values.tls.renewBefore }}
+  privateKey: { algorithm: ECDSA, size: 256, rotationPolicy: Always }
+  issuerRef: { name: {{ $name }}-ca, kind: Issuer }

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: n8n-private
+description: Single-instance self-hosted n8n, HTTPS with a cert-manager CA, reachable only through the operator's tunnel
+type: application
+version: 0.1.0
+appVersion: "2.48.7"

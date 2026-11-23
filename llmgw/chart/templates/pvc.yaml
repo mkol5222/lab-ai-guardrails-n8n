@@ -1,0 +1,17 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "gw.name" . }}-db
+  labels: {{- include "gw.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep   # virtual keys survive `make down` (PURGE=1 deletes)
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.database.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.database.size }}
+{{- end }}

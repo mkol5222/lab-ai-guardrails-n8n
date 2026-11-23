@@ -1,0 +1,11 @@
+# ClusterIP only: reached via `kubectl port-forward` through the operator's SSH tunnel.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "n8n.name" . }}
+  labels: {{- include "n8n.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector: {{- include "n8n.selector" . | nindent 4 }}
+  ports:
+    - { name: https, port: 443, targetPort: https }

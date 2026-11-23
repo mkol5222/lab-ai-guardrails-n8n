@@ -1,0 +1,6 @@
+apiVersion: v2
+name: llmgw
+description: Private LiteLLM gateway to OpenRouter free models, guarded by Check Point Lakera Guard, HTTPS via nginx sidecar
+type: application
+version: 0.1.0
+appVersion: "1.110.2"

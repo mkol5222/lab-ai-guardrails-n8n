@@ -1,0 +1,59 @@
+host: llmgw.localhost
+localPort: 4443
+
+image:
+  repository: ghcr.io/berriai/litellm-non_root
+  tag: v1.110.2
+  pullPolicy: IfNotPresent
+
+tlsProxy:
+  image: nginxinc/nginx-unprivileged:1.31.7-alpine
+
+# Postgres sidecar (pod loopback only) so LiteLLM can issue scoped virtual keys (e.g. for n8n).
+# Keys are stored hashed; provider credentials in the DB are encrypted with LITELLM_SALT_KEY.
+database:
+  enabled: true
+  image: postgres:18.7-alpine
+  size: 2Gi
+  storageClass: ""
+
+# In-cluster clients: namespaces whose pods may call the gateway (Service port 443 -> 8443).
+# The certificate also covers <release>.<namespace>.svc[.cluster.local] for them.
+clients:
+  namespaces: [n8n]
+
+# OpenRouter model ids (without the "openrouter/" prefix). `make up` replaces this list with the
+# current free text models from the OpenRouter catalog; "openrouter/free" is OpenRouter's free router.
+models:
+  - openrouter/free
+
+# Extra published variants of every model (the plain model name is always Lakera-blocking):
+#   monitor/<id>    Lakera inspects input + output and logs detections, never blocks
+#   unguarded/<id>  no guardrail at all. Off by default: best practice is to guard inputs and
+#                   outputs. Enable only for side-by-side comparison demos.
+variants:
+  monitor: true
+  unguarded: false
+
+# On rate limits (429) / provider errors, LiteLLM retries the request on this model (also Lakera-guarded).
+# Free models are heavily rate-limited; "openrouter/free" routes to whichever free model has capacity.
+fallbackModel: openrouter/free
+
+lakera:
+  apiBase: https://api.lakera.ai
+  # block = HTTP 400 on flagged input/output; monitor = log only
+  onFlagged: block
+
+# Names of the Secrets created by `make secrets` (provider keys) and by the chart (master key).
+secrets:
+  providers: llmgw-provider-keys
+
+tls:
+  caCommonName: llmgw local CA
+  caDuration: 87600h
+  duration: 8760h
+  renewBefore: 720h
+
+resources:
+  requests: { cpu: 100m, memory: 512Mi }
+  limits: { memory: 2Gi }

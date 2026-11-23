@@ -1,0 +1,27 @@
+# Public host name for the ingress (the Makefile passes the VM FQDN).
+host: ""
+
+replicaCount: 2
+
+image:
+  repository: nginxinc/nginx-unprivileged
+  tag: 1.31.7-alpine
+  pullPolicy: IfNotPresent
+
+ingress:
+  className: traefik
+
+tls:
+  # cert-manager self-signed CA -> leaf certificate for `host`.
+  caCommonName: podname-web local CA
+  caDuration: 87600h     # 10 years
+  duration: 2160h        # 90 days, renewed automatically by cert-manager
+  renewBefore: 360h
+
+resources:
+  requests: { cpu: 10m, memory: 16Mi }
+  limits: { memory: 64Mi }
+
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress   # where MicroK8s runs Traefik

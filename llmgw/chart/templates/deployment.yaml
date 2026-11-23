@@ -1,0 +1,114 @@
+{{- $name := include "gw.name" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{- include "gw.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # Single replica + RWO database volume: stop the old pod before starting the new one.
+  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 0, maxUnavailable: 1 } }
+  selector:
+    matchLabels: {{- include "gw.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "gw.selector" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        fsGroup: 70
+        seccompProfile: { type: RuntimeDefault }
+      {{- if .Values.database.enabled }}
+      initContainers:
+        # Native sidecar: starts (and is ready) before LiteLLM, stops after it. Loopback only.
+        - name: postgres
+          image: {{ .Values.database.image }}
+          restartPolicy: Always
+          args: ["-c", "listen_addresses=127.0.0.1"]
+          env:
+            - { name: POSTGRES_USER, value: litellm }
+            - { name: POSTGRES_DB, value: litellm }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $name }}-master-key, key: POSTGRES_PASSWORD } }
+          startupProbe:
+            exec: { command: ["pg_isready", "-h", "127.0.0.1", "-U", "litellm", "-d", "litellm"] }
+            periodSeconds: 2
+            failureThreshold: 60
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          securityContext:
+            runAsUser: 70
+            runAsGroup: 70
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: db, mountPath: /var/lib/postgresql/data }
+            - { name: pg-run, mountPath: /var/run/postgresql }
+      {{- end }}
+      containers:
+        - name: litellm
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config", "/config/config.yaml", "--host", "127.0.0.1", "--port", "4000", "--num_workers", "1"]
+          envFrom:
+            - secretRef: { name: {{ $name }}-master-key }
+            - secretRef: { name: {{ .Values.secrets.providers }} }   # OPENROUTER_API_KEY, LAKERA_API_KEY, LAKERA_PROJECT_ID
+          env:
+            {{- if .Values.database.enabled }}
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $name }}-master-key, key: POSTGRES_PASSWORD } }
+            - { name: DATABASE_URL, value: "postgresql://litellm:$(POSTGRES_PASSWORD)@127.0.0.1:5432/litellm" }
+            {{- end }}
+            - { name: LITELLM_TELEMETRY, value: "False" }
+            - { name: LITELLM_LOG, value: INFO }
+            - { name: LITELLM_MODE, value: PRODUCTION }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: config, mountPath: /config/config.yaml, subPath: config.yaml, readOnly: true }
+        - name: tls
+          image: {{ .Values.tlsProxy.image }}
+          ports:
+            - { name: https, containerPort: 8443 }
+          startupProbe:
+            httpGet: { path: /health/liveliness, port: https, scheme: HTTPS }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /health/readiness, port: https, scheme: HTTPS }
+            periodSeconds: 15
+          livenessProbe:
+            httpGet: { path: /health/liveliness, port: https, scheme: HTTPS }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            runAsUser: 101
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: config, mountPath: /etc/nginx/conf.d/default.conf, subPath: nginx.conf, readOnly: true }
+            - { name: tls, mountPath: /tls, readOnly: true }
+            - { name: nginx-tmp, mountPath: /tmp }
+      volumes:
+        - name: config
+          configMap: { name: {{ $name }}-config }
+        - name: tls
+          secret: { secretName: {{ $name }}-tls }
+        - name: nginx-tmp
+          emptyDir: {}
+        {{- if .Values.database.enabled }}
+        - name: db
+          persistentVolumeClaim: { claimName: {{ $name }}-db }
+        - name: pg-run
+          emptyDir: {}
+        {{- end }}

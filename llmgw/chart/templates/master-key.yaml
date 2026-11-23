@@ -1,0 +1,21 @@
+{{- /*
+Gateway secrets, generated in-cluster once, reused on upgrade (lookup, per key), kept on uninstall:
+  LITELLM_MASTER_KEY  admin key (operator only, `make key`)
+  LITELLM_SALT_KEY    encrypts provider credentials LiteLLM stores in its database (never change it)
+  POSTGRES_PASSWORD   database password (Postgres listens on pod loopback only)
+*/ -}}
+{{- $name := printf "%s-master-key" (include "gw.name" .) -}}
+{{- $existing := (lookup "v1" "Secret" .Release.Namespace $name) | default dict -}}
+{{- $data := $existing.data | default dict -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  labels: {{- include "gw.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+data:
+  LITELLM_MASTER_KEY: {{ get $data "LITELLM_MASTER_KEY" | default (printf "sk-%s" (randAlphaNum 40) | b64enc) }}
+  LITELLM_SALT_KEY: {{ get $data "LITELLM_SALT_KEY" | default (printf "sk-%s" (randAlphaNum 40) | b64enc) }}
+  POSTGRES_PASSWORD: {{ get $data "POSTGRES_PASSWORD" | default (randAlphaNum 32 | b64enc) }}
