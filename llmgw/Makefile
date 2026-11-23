@@ -31,7 +31,7 @@ help: ## Show targets
 	@echo "  Cluster: $(CLUSTER)   (CLUSTER=vm | docker | kind)"; echo
 	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-8s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 
-secrets: ## Prompt (hidden input) for OpenRouter key, Lakera key + project; store as a Kubernetes Secret
+secrets: ## OpenRouter key, Lakera key + project -> Kubernetes Secret (prompts, or Codespaces secrets from env)
 	@$(PREFLIGHT)
 	@scripts/secrets.sh $(NS) $(PROVIDER_SECRET) $(RELEASE)
 

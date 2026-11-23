@@ -6,11 +6,16 @@
 set -euo pipefail
 NS=$1 NAME=$2 DEPLOY=${3:-}
 
-[ -t 0 ] || { echo "make secrets needs an interactive terminal (in Claude Code: type  ! make -C llmgw secrets)"; exit 1; }
-
-read -rsp "OpenRouter API key (hidden): " OR_KEY; echo
-read -rsp "Lakera Guard API key (hidden): " LK_KEY; echo
-read -rp  "Lakera project ID (e.g. project-1234567890): " LK_PROJECT
+if [ -n "${OPENROUTER_API_KEY:-}" ] && [ -n "${LAKERA_API_KEY:-}" ] && [ -n "${LAKERA_PROJECT_ID:-}" ] && [ -z "${PROMPT:-}" ]; then
+  # e.g. GitHub Codespaces secrets (devcontainer.json "secrets"); PROMPT=1 forces the prompts
+  echo "Using OPENROUTER_API_KEY, LAKERA_API_KEY, LAKERA_PROJECT_ID from the environment (Codespaces secrets)."
+  OR_KEY=$OPENROUTER_API_KEY LK_KEY=$LAKERA_API_KEY LK_PROJECT=$LAKERA_PROJECT_ID
+else
+  [ -t 0 ] || { echo "make secrets needs an interactive terminal (in Claude Code: type  ! make -C llmgw secrets)"; exit 1; }
+  read -rsp "OpenRouter API key (hidden): " OR_KEY; echo
+  read -rsp "Lakera Guard API key (hidden): " LK_KEY; echo
+  read -rp  "Lakera project ID (e.g. project-1234567890): " LK_PROJECT
+fi
 for v in OR_KEY LK_KEY LK_PROJECT; do [ -n "${!v}" ] || { echo "$v is empty, aborting."; exit 1; }; done
 [[ $LK_PROJECT =~ ^[A-Za-z0-9_-]+$ ]] || { echo "Project ID contains unexpected characters, aborting."; exit 1; }
 

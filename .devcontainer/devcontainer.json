@@ -1,10 +1,19 @@
 {
   // Lab devcontainer: kind cluster inside Docker-in-Docker, no tools needed on the host.
   // Works with VS Code "Reopen in Container", the devcontainer CLI, and (later) GitHub Codespaces.
-  "name": "lab-ai-guardrails-n8n lab (kind)",
+  "name": "lab-ai-guardrails-n8n (kind)",
   "build": { "dockerfile": "Dockerfile" },
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": { "version": "latest", "moby": false }
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "version": "latest", "moby": false },
+    // SSH into the container (used by `gh codespace ssh`; nothing is published locally)
+    "ghcr.io/devcontainers/features/sshd:1": {}
+  },
+  // Codespaces asks for these at creation and stores them encrypted. `make -C llmgw secrets` uses them
+  // without prompting (still checked against both APIs). Locally, make secrets prompts instead.
+  "secrets": {
+    "OPENROUTER_API_KEY": { "description": "OpenRouter API key (a free account is enough)", "documentationUrl": "https://openrouter.ai/settings/keys" },
+    "LAKERA_API_KEY": { "description": "Check Point Lakera Guard API key", "documentationUrl": "https://platform.lakera.ai/" },
+    "LAKERA_PROJECT_ID": { "description": "Lakera Guard project ID (prompt-attack detection enabled)", "documentationUrl": "https://platform.lakera.ai/" }
   },
   "containerEnv": { "CLUSTER": "kind" },
   // Full lab (kind + n8n + llmgw + cert-manager) uses ~3.5 GiB. 6gb fits a Docker Desktop VM set to 8 GB

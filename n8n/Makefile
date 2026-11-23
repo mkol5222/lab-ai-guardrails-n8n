@@ -13,6 +13,13 @@ STATE     := $(CURDIR)/.state/$(CLUSTER)
 CA_FILE   := $(STATE)/ca.crt
 NS        ?= n8n
 RELEASE   ?= n8n
+# GitHub Codespaces: the browser reaches n8n via https://<codespace>-<port>.<forwarding domain> (port 443),
+# GitHub's proxy terminates the browser TLS and forwards to `make tunnel` on 127.0.0.1:$(PORT).
+ifneq ($(CODESPACE_NAME),)
+  N8N_HOST  ?= $(CODESPACE_NAME)-$(or $(PORT),8443).$(GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN)
+  URL_PORT  := 443
+  ENV_ARGS  := --set-string extraEnv.N8N_PROXY_HOPS=1
+endif
 N8N_HOST  ?= n8n.localhost
 PORT      ?= 8443
 TEST_PORT ?= 18443
@@ -23,7 +30,8 @@ GW_REL    ?= llmgw
 LLM_MODEL ?= google/gemma-4-31b-it:free
 WORKFLOW  ?= workflows/llmgw-chat-agent.json
 
-URL     = https://$(N8N_HOST):$(PORT)/
+URL_PORT ?= $(PORT)
+URL     = https://$(N8N_HOST)$(if $(filter 443,$(URL_PORT)),,:$(URL_PORT))/
 K       = kubectl -n $(NS)
 
 .PHONY: help up down info test tunnel ca addons llm-connect llm-test
@@ -40,7 +48,7 @@ up: addons ## Deploy/upgrade n8n, wait until ready, print the URL
 	@# Trust the llmgw CA if `make llm-connect` provided it (ConfigMap llmgw-ca).
 	@ca=$$({ $(K) get configmap llmgw-ca -o name 2>/dev/null || true; } | cut -d/ -f2); \
 	 helm upgrade --install $(RELEASE) chart -n $(NS) --create-namespace \
-	  --set host=$(N8N_HOST) --set localPort=$(PORT) --set extraCA.configMap=$$ca --wait --timeout 10m $(HELM_ARGS)
+	  --set host=$(N8N_HOST) --set localPort=$(URL_PORT) --set extraCA.configMap=$$ca $(ENV_ARGS) --wait --timeout 10m $(HELM_ARGS)
 	@$(K) wait certificate/$(RELEASE)-tls --for=condition=Ready --timeout=120s >/dev/null
 	@# n8n loads its certificate at start: restart once if cert-manager renewed it since.
 	@nb=$$($(K) get certificate $(RELEASE)-tls -o jsonpath='{.status.notBefore}'); \
