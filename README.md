@@ -27,6 +27,7 @@ Kubernetes, or a MicroK8s VM on Azure.
 | [`n8n/`](n8n) | Private self-hosted n8n over CA-signed HTTPS, no ingress, reached through a tunnel |
 | [`llmgw/`](llmgw) | Private LiteLLM gateway to OpenRouter free models, protected by Check Point Lakera Guard |
 | [`kind/`](kind) + [`.devcontainer/`](.devcontainer) | The lab in a devcontainer: a kind cluster in Docker-in-Docker, so the host needs nothing but Docker |
+| [`CLAUDE.md`](CLAUDE.md) | Conventions for contributors and AI coding assistants: clusters, tests, secret/TLS/exposure rules |
 | [`common/`](common) | Shared cluster selection (`k8s.mk`) and add-on installer (`ensure-addons.sh`) |
 
 ## Choosing the cluster
