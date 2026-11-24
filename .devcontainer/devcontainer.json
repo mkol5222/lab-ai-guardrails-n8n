@@ -15,7 +15,7 @@
     "LAKERA_API_KEY": { "description": "Check Point Lakera Guard API key", "documentationUrl": "https://platform.lakera.ai/" },
     "LAKERA_PROJECT_ID": { "description": "Lakera Guard project ID (prompt-attack detection enabled)", "documentationUrl": "https://platform.lakera.ai/" }
   },
-  "containerEnv": { "CLUSTER": "kind" },
+  "containerEnv": { "CLUSTER": "kind", "DEVCONTAINER": "true" },
   // Full lab (kind + n8n + llmgw + cert-manager) uses ~3.5 GiB. 6gb fits a Docker Desktop VM set to 8 GB
   // (reported as ~7.65 GiB). In Codespaces, cpus: 4 selects the 4-core / 16 GB machine.
   "hostRequirements": { "cpus": 4, "memory": "6gb", "storage": "32gb" },

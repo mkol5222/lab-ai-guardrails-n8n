@@ -11,7 +11,8 @@ devcontainer** ([`../.devcontainer`](../.devcontainer)), so the host needs nothi
 - **CLI:** `devcontainer up --workspace-folder .`, then `devcontainer exec --workspace-folder . bash`.
 
 The first build takes about 3–5 minutes. `postStartCommand` runs `make -C kind up`, which creates the cluster, or restarts it after
-the container restarts. After that, follow [`../LAB-GUIDE.md`](../LAB-GUIDE.md). `export CLUSTER=...` isn't needed, because
+the container restarts. After that, run `make up` from the repository root (see [`../LAB-DEVCONTAINER-LOCAL.md`](../LAB-DEVCONTAINER-LOCAL.md))
+to deploy and verify the full lab, or follow the steps manually. `export CLUSTER=...` isn't needed, because
 the container already sets it.
 
 ## Targets

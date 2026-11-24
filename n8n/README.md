@@ -17,7 +17,7 @@ make tunnel                       # terminal 2: keep open -> browse https://n8n.
 make test                         # terminal 3: verify
 ```
 
-On your first visit, n8n shows its setup screen. Create the owner account there.
+On your first visit, sign in with the pre-created owner account (`guru@example.com`). Display its generated password with `make passwd` (or `make n8n-passwd` from the repo root).
 
 ## Clusters
 
@@ -42,15 +42,17 @@ ClusterIP and there is no Ingress.
 | Target | What it does |
 |---|---|
 | `make up` | Enables the cert-manager addon if it is missing, runs `helm upgrade --install --wait`, waits for the certificate, restarts n8n if the certificate was renewed, exports the CA and prints `info` |
-| `make down` | Uninstalls the release. **Keeps** the data PVC and the encryption key, so the next `make up` brings back your workflows and credentials. `PURGE=1` deletes the namespace and everything in it |
-| `make info` | URL, chart and app version, certificate SANs and expiry, PVC, exposure, pod |
-| `make test` | Uses its own temporary port-forward on port 18443. Checks `/healthz` and the editor UI over HTTPS **verified against the private CA**. Checks that the server rejects TLS 1.1, that the namespace has no Ingress, IngressRoute, HTTPRoute, NodePort or LoadBalancer, and that the VM's public IP does not present n8n's certificate |
+| `make down` | Uninstalls the release. **Keeps** the data PVC, owner secret and encryption key, so the next `make up` brings back your workflows, credentials and login. `PURGE=1` deletes the namespace and everything in it |
+| `make info` | URL, chart and app version, certificate SANs and expiry, PVC, exposure, owner login email, pod |
+| `make test` | Uses its own temporary port-forward on port 18443. Checks `/healthz`, the editor UI, pre-created owner provisioning and login over HTTPS **verified against the private CA**. Checks that the server rejects TLS 1.1, that the namespace has no Ingress, IngressRoute, HTTPRoute, NodePort or LoadBalancer, and that the VM's public IP does not present n8n's certificate |
 | `make tunnel` | `kubectl port-forward` on `127.0.0.1:8443` to the n8n Service |
 | `make ca` | Exports the CA to `.state/<cluster>/ca.crt` |
+| `make passwd` | Prints the pre-created owner email (`guru@example.com`) and generated password from Secret `<release>-owner` |
 | `make llm-connect` | Connects n8n to `../llmgw`: copies the CA, creates the credential (scoped key), imports `WORKFLOW` and restarts n8n |
 | `make llm-test` | Runs from **inside the n8n pod**: verified TLS, key scope, a benign prompt answered, the injection blocked by Lakera, `/v1/responses` refused, the key unable to mint keys, and a NetworkPolicy probe from another namespace |
 
 Variables: `PORT=8443`, `N8N_HOST=n8n.localhost`, `NS=n8n`, `RELEASE=n8n`, and `HELM_ARGS="--set extraEnv.N8N_LOG_LEVEL=debug"`.
+To customize or disable the pre-created owner account, pass Helm values `owner.enabled`, `owner.email` (default `guru@example.com`), `owner.firstName` (`Guru`), `owner.lastName` (`Lab`).
 If you change `PORT` or `N8N_HOST`, run `make up` again, because n8n renders its URL from them.
 
 ## Using the in-cluster LLM gateway (llmgw)
@@ -107,6 +109,10 @@ These follow common hardening practice for self-hosted automation platforms: pri
 - **Credentials:** n8n encrypts stored credentials with `N8N_ENCRYPTION_KEY`. The chart generates that key once **inside the
   cluster**, keeps it in a Secret (reused on upgrade and kept on uninstall), and never writes it to values, files or git.
   Store credentials in n8n's credential store, never in workflow nodes or parameters.
+- **Pre-created owner account:** the chart pre-provisions the instance owner (`guru@example.com`, `N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true`)
+  with a random 24-character password and bcrypt hash generated once in-cluster in Secret `<release>-owner` (reused on upgrade,
+  kept on uninstall). The n8n pod receives only `password_hash` via `N8N_INSTANCE_OWNER_PASSWORD_HASH`, never the plaintext password.
+  Retrieve the login credentials with `make passwd` (or `make n8n-passwd`).
 - **Hardening:** non-root (uid 1000), no privilege escalation, all capabilities dropped, no service-account token,
   task runners enabled, `N8N_BLOCK_ENV_ACCESS_IN_NODE=true`.
 - **Data stays in-house:** telemetry, version checks, personalization, community packages and the built-in AI assistant

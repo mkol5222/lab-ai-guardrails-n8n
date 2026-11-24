@@ -22,6 +22,7 @@ Kubernetes, or a MicroK8s VM on Azure.
 
 | Folder | What it is |
 |---|---|
+| [`Makefile`](Makefile) | Top-level devcontainer entry point: `make up` (validates devcontainer, brings up full lab), `make n8n-passwd`, `make n8n-tunnel`, `make down` |
 | [`vm/`](vm) | Terraform + Makefile: an Ubuntu 26.04 LTS Azure VM with MicroK8s, k9s, jq and curl. `make up / down / info / ssh / serial / tunnel` |
 | [`nginx/`](nginx) | Pod-name web server over HTTPS (Traefik ingress, cert-manager private CA) |
 | [`n8n/`](n8n) | Private self-hosted n8n over CA-signed HTTPS, no ingress, reached through a tunnel |
@@ -36,7 +37,9 @@ Every app Makefile takes `CLUSTER=vm` (the default), `CLUSTER=docker` or `CLUSTE
 
 ```bash
 # Devcontainer / Codespaces: CLUSTER=kind is preset
-make -C n8n up && make -C n8n test
+make up                                     # brings up kind, n8n, llmgw, connects & tests, prints browser steps
+make n8n-passwd                             # show pre-created n8n owner email (guru@example.com) + generated password
+make n8n-tunnel                             # forward n8n HTTPS to 127.0.0.1:8443 (in a second terminal)
 
 # Azure VM
 make -C vm up && make -C vm tunnel          # keep the tunnel open

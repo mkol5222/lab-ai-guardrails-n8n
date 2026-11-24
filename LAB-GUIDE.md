@@ -24,7 +24,8 @@ The lab takes about 20 minutes. Nothing is published on your Mac: every URL goes
 | **Devcontainer** | Docker and VS Code (Dev Containers), nothing else | kind in the container, `CLUSTER=kind` preset. Step by step: [LAB-DEVCONTAINER-LOCAL.md](LAB-DEVCONTAINER-LOCAL.md) |
 | **Azure VM** | `az`, `terraform`, `helm` | `make -C vm up && make -C vm tunnel`, `CLUSTER=vm` |
 
-In the devcontainer, skip the prerequisites and `export` below and run the same steps in the container terminal. VS Code
+In the devcontainer, skip the prerequisites and `export` below and run `make up` (which validates you are in the
+devcontainer and runs all setup steps automatically) or run the same steps in the container terminal. VS Code
 forwards ports 8443, 4443 and 9443, so the host browser URLs are the same. The CA files are in your checkout
 (`n8n/.state/kind/ca.crt`), and `make -C llmgw key` writes `llmgw/.state/kind/master-key` instead of using the clipboard.
 
@@ -53,10 +54,11 @@ In **terminal 2**, leave this running:
 make -C n8n tunnel             # https://n8n.localhost:8443/
 ```
 
-Trust the n8n CA once, then open **https://n8n.localhost:8443/** and create the owner account:
+Trust the n8n CA once, display the pre-created owner credentials (`guru@example.com` + generated password), then open **https://n8n.localhost:8443/** and sign in:
 
 ```bash
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain n8n/.state/docker/ca.crt
+make n8n-passwd
 ```
 
 ## Step 2: LLM gateway with Lakera Guard

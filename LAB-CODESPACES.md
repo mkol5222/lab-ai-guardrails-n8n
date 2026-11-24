@@ -24,6 +24,12 @@ OpenRouter API key, and a Lakera Guard API key and project ID (with prompt-attac
 Open a terminal (**Ctrl+\`**). `CLUSTER=kind` is preset.
 
 ```bash
+make up                        # runs steps 1-4 below and prints browser + login instructions
+```
+
+Or run each step manually:
+
+```bash
 make -C kind info              # mk8s-lab, node Ready
 ```
 
@@ -55,12 +61,18 @@ make -C n8n llm-test                  # PASS, from inside the n8n pod
 In a second terminal (**+**), leave this running:
 
 ```bash
-make -C n8n tunnel
+make n8n-tunnel                # same as: make -C n8n tunnel
+```
+
+Get the pre-created owner login (`guru@example.com` + generated password):
+
+```bash
+make n8n-passwd
 ```
 
 Codespaces forwards port **8443**. In the **Ports** tab, open the globe icon on "n8n", or use the URL printed by
 `make -C n8n info` (`https://<codespace>-8443.app.github.dev/`). GitHub serves it with its own certificate, so **no CA
-trust step** is needed. Create the n8n owner account.
+trust step** is needed. Sign in with the email and password from `make n8n-passwd`.
 
 > Keep the port visibility **Private** (the default): only you, signed in to GitHub, can open it. Don't switch it to Public.
 

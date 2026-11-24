@@ -29,6 +29,19 @@ every start the container runs `make -C kind up`, which creates the kind cluster
 make -C kind info          # mk8s-lab, node Ready (Kubernetes v1.37)
 ```
 
+## Quick start: bring everything up in one command
+
+**[container]**
+```bash
+make up
+```
+
+`make up` verifies that it is running inside the devcontainer (`CLUSTER=kind`), runs steps 1–4 below in order
+(`kind` → `n8n` + tests → `llmgw` secrets/deploy/tests → `client-key` + `llm-connect` + `llm-test`), and finishes
+by printing the exact instructions to open n8n in your browser and sign in.
+
+If you prefer to run each component manually, follow steps 2–4 below instead.
+
 ## 2. n8n
 
 **[container]**
@@ -59,7 +72,7 @@ make -C n8n llm-test                  # 7x PASS, from inside the n8n pod
 
 **[container]**, in a second terminal (**+**), leave this running:
 ```bash
-make -C n8n tunnel
+make n8n-tunnel            # same as: make -C n8n tunnel
 ```
 VS Code forwards port **8443** to the Mac: the **Ports** tab shows "n8n".
 
@@ -68,7 +81,13 @@ VS Code forwards port **8443** to the Mac: the **Ports** tab shows "n8n".
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \
   ~/github/lab-ai-guardrails-n8n/n8n/.state/kind/ca.crt
 ```
-Open **https://n8n.localhost:8443/** and create the owner account.
+
+**[container]**, display the pre-created owner credentials (generated in-cluster on install):
+```bash
+make n8n-passwd            # Email: guru@example.com + generated password
+```
+
+Open **https://n8n.localhost:8443/** and sign in with the email and password from `make n8n-passwd`.
 
 ## 6. Demo
 
@@ -102,17 +121,15 @@ Open **https://n8n.localhost:8443/** and create the owner account.
 
 Pick the level you need. Each level includes the ones above it.
 
-**1. Pause the apps, keep the data.** Workflows, credentials and keys stay, and `make up` restores the lab. **[container]**
+**1. Pause the apps, keep the data.** Workflows, credentials, owner password and keys stay, and `make up` restores the lab. **[container]**
 ```bash
-make -C n8n down
-make -C llmgw down
+make down                  # same as: make -C n8n down && make -C llmgw down
 ```
 
-**2. Remove the apps and their data,** including the stored API keys. **[container]**
+**2. Remove the apps and their data,** including the stored API keys and owner secret. **[container]**
 ```bash
-make -C n8n down PURGE=1
-make -C llmgw down PURGE=1
-make -C nginx down                    # only if you deployed the nginx demo
+make down PURGE=1          # same as: make -C n8n down PURGE=1 && make -C llmgw down PURGE=1
+make -C nginx down         # only if you deployed the nginx demo
 ```
 
 **3. Delete the kind cluster.** This frees almost all CPU and RAM, and the container stays usable. **[container]**

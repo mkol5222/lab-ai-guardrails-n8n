@@ -2,6 +2,14 @@
 
 All notable changes to `lab-ai-guardrails-n8n/n8n`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.4.0] - 2026-11-24
+
+### Added
+- Pre-created n8n instance owner account (`guru@example.com`, `Guru Lab`) via `N8N_INSTANCE_OWNER_MANAGED_BY_ENV=true` (chart v0.2.0).
+- `templates/owner-secret.yaml`: generates a random 24-character password and bcrypt hash once in-cluster (reused on upgrade via `lookup`, kept on uninstall via `helm.sh/resource-policy: keep`). The pod mounts only `password_hash`.
+- `make passwd` (also exposed at repo root as `make n8n-passwd`) to display the pre-created owner email and generated password.
+- `make test` checks that the owner setup wizard is bypassed (`showSetupOnFirstLoad=false`) and verifies login via `POST /rest/login` (credentials piped via stdin, never on argv).
+
 ## [0.3.1] - 2026-11-23
 
 ### Fixed

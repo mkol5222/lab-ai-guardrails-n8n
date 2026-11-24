@@ -2,6 +2,12 @@
 
 All notable changes to `lab-ai-guardrails-n8n/kind` and `.devcontainer`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-11-24
+
+### Added
+- Top-level `Makefile` with `make up` (validates running inside the devcontainer, runs the full `kind` → `n8n` → `llmgw` → connect/test flow, and prints browser + login instructions), `make n8n-passwd`, `make n8n-tunnel`, and `make down`.
+- `DEVCONTAINER=true` in `.devcontainer/devcontainer.json` `containerEnv` alongside `CLUSTER=kind`.
+
 ## [0.1.1] - 2026-11-23
 
 ### Changed

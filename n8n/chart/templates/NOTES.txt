@@ -1,2 +1,5 @@
 n8n URL (after `make tunnel`): {{ include "n8n.url" . }}
+{{- if .Values.owner.enabled }}
+Owner login: {{ .Values.owner.email }} (retrieve generated password with `make n8n-passwd` or `make -C n8n passwd`)
+{{- end }}
 Not exposed outside the cluster: no Ingress, ClusterIP service only.

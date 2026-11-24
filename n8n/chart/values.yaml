@@ -29,5 +29,14 @@ resources:
 extraCA:
   configMap: ""
 
+# Pre-provisioned instance owner account (n8n >= 2.17 env-managed owner).
+# Password and bcrypt hash are generated in-cluster on first install (Secret <release>-owner,
+# reused on upgrade, kept on uninstall). Retrieve with `make -C n8n passwd` or `make n8n-passwd`.
+owner:
+  enabled: true
+  email: guru@example.com
+  firstName: Guru
+  lastName: Lab
+
 # Extra n8n environment variables (https://docs.n8n.io/hosting/configuration/environment-variables/)
 extraEnv: {}

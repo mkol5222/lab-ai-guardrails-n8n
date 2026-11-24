@@ -34,11 +34,11 @@ URL_PORT ?= $(PORT)
 URL     = https://$(N8N_HOST)$(if $(filter 443,$(URL_PORT)),,:$(URL_PORT))/
 K       = kubectl -n $(NS)
 
-.PHONY: help up down info test tunnel ca addons llm-connect llm-test
+.PHONY: help up down info test tunnel ca addons passwd llm-connect llm-test
 
 help: ## Show targets
 	@echo "  Cluster: $(CLUSTER)   (CLUSTER=vm | docker | kind)"; echo
-	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-7s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-11s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 
 addons: ## Ensure cert-manager (MicroK8s addon on vm, Helm chart on docker/kind; part of up)
 	@$(PREFLIGHT)
@@ -63,6 +63,13 @@ ca: ## Export the private CA to .state/ca.crt
 	@$(K) get secret $(RELEASE)-tls -o jsonpath='{.data.ca\.crt}' | base64 -d > $(CA_FILE)
 	@echo "CA exported: $(CA_FILE)  ($$(openssl x509 -in $(CA_FILE) -noout -subject | sed 's/^subject=//'))"
 
+passwd: ## Show the pre-created n8n owner email and generated password
+	@$(PREFLIGHT)
+	@$(K) get secret $(RELEASE)-owner >/dev/null 2>&1 || { echo "Owner secret $(NS)/$(RELEASE)-owner not found. Run 'make up' first (requires owner.enabled=true)."; exit 1; }
+	@email=$$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.email}' | base64 -d); \
+	 pw=$$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.password}' | base64 -d); \
+	 printf "  %-10s %s\n" Email "$$email" Password "$$pw"
+
 llm-connect: ## Wire n8n to in-cluster llmgw: CA trust, credential "llmgw (Lakera-guarded)", import WORKFLOW
 	@$(PREFLIGHT)
 	@scripts/llm-connect.sh $(NS) $(RELEASE) $(GW_NS) $(GW_REL) $(WORKFLOW)
@@ -82,9 +89,9 @@ down: ## Uninstall n8n; keeps data + encryption key (PURGE=1 deletes the namespa
 	@helm uninstall $(RELEASE) -n $(NS) --wait 2>/dev/null || echo "Release $(RELEASE) not installed."
 	@if [ -n "$(PURGE)" ]; then \
 	   kubectl delete namespace $(NS) --ignore-not-found --wait; rm -f "$(CA_FILE)"; \
-	   echo "Purged: workflows, credentials and encryption key are gone."; \
+	   echo "Purged: workflows, credentials, owner secret and encryption key are gone."; \
 	 else \
-	   echo "Kept: PVC $(RELEASE)-data and secret $(RELEASE)-encryption-key in namespace $(NS) (make up restores; PURGE=1 deletes)."; \
+	   echo "Kept: PVC $(RELEASE)-data and secrets $(RELEASE)-encryption-key, $(RELEASE)-owner in namespace $(NS) (make up restores; PURGE=1 deletes)."; \
 	 fi
 
 info: ## URL, release, pod, certificate, exposure
@@ -97,7 +104,11 @@ info: ## URL, release, pod, certificate, exposure
 	@echo "  Exposure     ClusterIP only, no Ingress: reachable only through the SSH tunnel"
 	@echo "  Trust CA     curl --cacert $(CA_FILE) $(URL)healthz"
 	@echo "               macOS browser (on the Mac): sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $(CA_FILE)"
-	@echo "  First visit  create the owner account on the setup screen"
+	@if $(K) get secret $(RELEASE)-owner >/dev/null 2>&1; then \
+	   echo "  Login        $$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.email}' | base64 -d)  (password: 'make n8n-passwd' or 'make -C n8n passwd')"; \
+	 else \
+	   echo "  First visit  create the owner account on the setup screen"; \
+	 fi
 	@echo "  Pod:"; $(K) get pods -l app.kubernetes.io/instance=$(RELEASE) -o wide | sed 's/^/    /'
 
 test: ca ## Verify CA-validated HTTPS, health, TLS >= 1.2, and that n8n is not publicly exposed
@@ -110,6 +121,19 @@ test: ca ## Verify CA-validated HTTPS, health, TLS >= 1.2, and that n8n is not p
 	if [ "$$(jq -r .status <<<"$$h")" = ok ]; then echo "PASS  HTTPS /healthz ok, certificate verified against the private CA"; else echo "FAIL  /healthz: $$h"; fail=1; fi; \
 	code=$$($$c -o $(STATE)/index.html -w '%{http_code}' https://$(N8N_HOST):$(TEST_PORT)/); \
 	if [ "$$code" = 200 ] && grep -qi 'n8n' $(STATE)/index.html; then echo "PASS  editor UI served (HTTP $$code)"; else echo "FAIL  editor UI (HTTP $$code)"; fail=1; fi; \
+	if $(K) get secret $(RELEASE)-owner >/dev/null 2>&1; then \
+	  st=$$($$c https://$(N8N_HOST):$(TEST_PORT)/rest/settings); \
+	  setup=$$(jq -r '.data.userManagement.showSetupOnFirstLoad // "unknown"' <<<"$$st"); \
+	  if [ "$$setup" = false ]; then echo "PASS  pre-created owner provisioned (setup screen bypassed)"; \
+	  else echo "FAIL  owner setup still pending (showSetupOnFirstLoad=$$setup)"; fail=1; fi; \
+	  email=$$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.email}' | base64 -d); \
+	  origin="https://$(N8N_HOST)$(if $(filter 443,$(URL_PORT)),,:$(URL_PORT))"; \
+	  lcode=$$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.password}' | base64 -d \
+	    | jq -Rs --arg e "$$email" '{emailOrLdapLoginId:$$e, password:(.|rtrimstr("\n"))}' \
+	    | $$c -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -H "Origin: $$origin" --data-binary @- https://$(N8N_HOST):$(TEST_PORT)/rest/login); \
+	  if [ "$$lcode" = 200 ]; then echo "PASS  pre-created owner login verified ($$email, HTTP $$lcode)"; \
+	  else echo "FAIL  pre-created owner login failed ($$email, HTTP $$lcode)"; fail=1; fi; \
+	else echo "SKIP  pre-created owner check (owner.enabled=false)"; fi; \
 	out=$$(openssl s_client -connect 127.0.0.1:$(TEST_PORT) -servername $(N8N_HOST) -tls1_1 -cipher 'DEFAULT:@SECLEVEL=0' </dev/null 2>&1 || true); \
 	if grep -q 'alert protocol version' <<<"$$out"; then echo "PASS  TLS 1.1 rejected by server"; \
 	elif grep -qE 'Cipher is [A-Z0-9]' <<<"$$out" && ! grep -q 'Cipher is (NONE)' <<<"$$out"; then echo "FAIL  TLS 1.1 accepted"; fail=1; \
