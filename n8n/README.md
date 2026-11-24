@@ -41,7 +41,8 @@ ClusterIP and there is no Ingress.
 
 | Target | What it does |
 |---|---|
-| `make up` | Enables the cert-manager addon if it is missing, runs `helm upgrade --install --wait`, waits for the certificate, restarts n8n if the certificate was renewed, exports the CA and prints `info` |
+| `make up` | Enables the cert-manager addon if it is missing, runs `helm upgrade --install --wait`, waits for the certificate, restarts n8n if the certificate was renewed, imports the bundled lab workflows (`get-public-ip.json`, `prompt-roulette.json`), exports the CA and prints `info` |
+| `make import-workflows` | Imports the local workflows in `IMPORT_WORKFLOWS` (`workflows/get-public-ip.json`, `workflows/prompt-roulette.json`) into the running n8n pod (idempotent by workflow ID). `Prompt Roulette V2` expects an HTTP Bearer Auth credential named `LakeraAPI` configured in n8n |
 | `make down` | Uninstalls the release. **Keeps** the data PVC, owner secret and encryption key, so the next `make up` brings back your workflows, credentials and login. `PURGE=1` deletes the namespace and everything in it |
 | `make info` | URL, chart and app version, certificate SANs and expiry, PVC, exposure, owner login email, pod |
 | `make test` | Uses its own temporary port-forward on port 18443. Checks `/healthz`, the editor UI, pre-created owner provisioning and login over HTTPS **verified against the private CA**. Checks that the server rejects TLS 1.1, that the namespace has no Ingress, IngressRoute, HTTPRoute, NodePort or LoadBalancer, and that the VM's public IP does not present n8n's certificate |
@@ -53,6 +54,7 @@ ClusterIP and there is no Ingress.
 
 Variables: `PORT=8443`, `N8N_HOST=n8n.localhost`, `NS=n8n`, `RELEASE=n8n`, and `HELM_ARGS="--set extraEnv.N8N_LOG_LEVEL=debug"`.
 To customize or disable the pre-created owner account, pass Helm values `owner.enabled`, `owner.email` (default `guru@example.com`), `owner.firstName` (`Guru`), `owner.lastName` (`Lab`).
+Instance-level MCP (`/mcp-server/http`) is enabled by default via `mcp.enabled=true` (`N8N_MCP_MANAGED_BY_ENV=true`, `N8N_MCP_ACCESS_ENABLED=true`). Disable with `HELM_ARGS="--set mcp.enabled=false"`.
 If you change `PORT` or `N8N_HOST`, run `make up` again, because n8n renders its URL from them.
 
 ## Using the in-cluster LLM gateway (llmgw)

@@ -38,5 +38,10 @@ owner:
   firstName: Guru
   lastName: Lab
 
+# Instance-level MCP server (/mcp-server/http), managed via environment variables.
+# Sets N8N_MCP_MANAGED_BY_ENV=true and N8N_MCP_ACCESS_ENABLED=true on startup.
+mcp:
+  enabled: true
+
 # Extra n8n environment variables (https://docs.n8n.io/hosting/configuration/environment-variables/)
 extraEnv: {}

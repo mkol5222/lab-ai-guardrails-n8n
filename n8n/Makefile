@@ -29,12 +29,14 @@ GW_NS     ?= llmgw
 GW_REL    ?= llmgw
 LLM_MODEL ?= google/gemma-4-31b-it:free
 WORKFLOW  ?= workflows/llmgw-chat-agent.json
+# Lab workflows stored locally in workflows/ and imported automatically on `make up`
+IMPORT_WORKFLOWS ?= workflows/get-public-ip.json workflows/prompt-roulette.json
 
 URL_PORT ?= $(PORT)
 URL     = https://$(N8N_HOST)$(if $(filter 443,$(URL_PORT)),,:$(URL_PORT))/
 K       = kubectl -n $(NS)
 
-.PHONY: help up down info test tunnel ca addons passwd llm-connect llm-test
+.PHONY: help up down info test tunnel ca addons passwd import-workflows llm-connect llm-test
 
 help: ## Show targets
 	@echo "  Cluster: $(CLUSTER)   (CLUSTER=vm | docker | kind)"; echo
@@ -55,7 +57,12 @@ up: addons ## Deploy/upgrade n8n, wait until ready, print the URL
 	 st=$$($(K) get pods -l app.kubernetes.io/instance=$(RELEASE) -o jsonpath='{.items[0].status.startTime}'); \
 	 if [[ "$$nb" > "$$st" ]]; then echo "Certificate renewed after pod start: restarting n8n"; \
 	   $(K) rollout restart deploy/$(RELEASE) >/dev/null; $(K) rollout status deploy/$(RELEASE) --timeout=5m; fi
+	@$(MAKE) --no-print-directory import-workflows
 	@$(MAKE) --no-print-directory ca info
+
+import-workflows: ## Import local lab workflows (IMPORT_WORKFLOWS) into the running n8n pod
+	@$(PREFLIGHT)
+	@scripts/import-workflows.sh $(NS) $(RELEASE) $(IMPORT_WORKFLOWS)
 
 ca: ## Export the private CA to .state/ca.crt
 	@$(PREFLIGHT)
@@ -134,6 +141,12 @@ test: ca ## Verify CA-validated HTTPS, health, TLS >= 1.2, and that n8n is not p
 	  if [ "$$lcode" = 200 ]; then echo "PASS  pre-created owner login verified ($$email, HTTP $$lcode)"; \
 	  else echo "FAIL  pre-created owner login failed ($$email, HTTP $$lcode)"; fail=1; fi; \
 	else echo "SKIP  pre-created owner check (owner.enabled=false)"; fi; \
+	if [ "$$(helm get values $(RELEASE) -n $(NS) -a -o json | jq -r '.mcp.enabled // false')" = true ]; then \
+	  mcode=$$($$c -I -D $(STATE)/mcp-headers.txt -o /dev/null -w '%{http_code}' https://$(N8N_HOST):$(TEST_PORT)/mcp-server/http); \
+	  if [ "$$mcode" = 401 ] && grep -qi 'n8n MCP Server' $(STATE)/mcp-headers.txt; then echo "PASS  instance-level MCP enabled (/mcp-server/http -> HTTP 401 auth required)"; \
+	  else echo "FAIL  instance-level MCP probe (/mcp-server/http -> HTTP $$mcode)"; fail=1; fi; \
+	  rm -f $(STATE)/mcp-headers.txt; \
+	else echo "SKIP  instance-level MCP check (mcp.enabled=false)"; fi; \
 	out=$$(openssl s_client -connect 127.0.0.1:$(TEST_PORT) -servername $(N8N_HOST) -tls1_1 -cipher 'DEFAULT:@SECLEVEL=0' </dev/null 2>&1 || true); \
 	if grep -q 'alert protocol version' <<<"$$out"; then echo "PASS  TLS 1.1 rejected by server"; \
 	elif grep -qE 'Cipher is [A-Z0-9]' <<<"$$out" && ! grep -q 'Cipher is (NONE)' <<<"$$out"; then echo "FAIL  TLS 1.1 accepted"; fail=1; \

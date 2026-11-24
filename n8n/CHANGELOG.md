@@ -2,6 +2,14 @@
 
 All notable changes to `lab-ai-guardrails-n8n/n8n`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.0] - 2026-11-24
+
+### Added
+- Declarative instance-level MCP enablement (`mcp.enabled: true`, chart v0.3.0): sets `N8N_MCP_MANAGED_BY_ENV=true` and `N8N_MCP_ACCESS_ENABLED=true` so `/mcp-server/http` is enabled automatically on startup.
+- `make test` verifies `/mcp-server/http` responds with `HTTP 401` and `WWW-Authenticate: Bearer realm="n8n MCP Server"` when `mcp.enabled=true`.
+- Bundled lab workflows from `mkol5222/lakera-in-n8n` stored locally in `workflows/get-public-ip.json` and `workflows/prompt-roulette.json`.
+- `scripts/import-workflows.sh` and `make import-workflows` (run automatically during `make up`) to import the bundled workflows idempotently into the running n8n pod.
+
 ## [0.4.0] - 2026-11-24
 
 ### Added
