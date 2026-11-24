@@ -10,6 +10,9 @@ All notable changes to `lab-ai-guardrails-n8n/n8n`. Format: [Keep a Changelog](h
 - `make passwd` (also exposed at repo root as `make n8n-passwd`) to display the pre-created owner email and generated password.
 - `make test` checks that the owner setup wizard is bypassed (`showSetupOnFirstLoad=false`) and verifies login via `POST /rest/login` (credentials piped via stdin, never on argv).
 
+### Fixed
+- `make test` on fresh clusters without Traefik / Gateway API CRDs: guard optional `ingressroutes.traefik.io` and `httproutes.gateway.networking.k8s.io` lookups with `|| true` under `set -euo pipefail`.
+
 ## [0.3.1] - 2026-11-23
 
 ### Fixed

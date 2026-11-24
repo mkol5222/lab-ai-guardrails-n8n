@@ -138,7 +138,7 @@ test: ca ## Verify CA-validated HTTPS, health, TLS >= 1.2, and that n8n is not p
 	if grep -q 'alert protocol version' <<<"$$out"; then echo "PASS  TLS 1.1 rejected by server"; \
 	elif grep -qE 'Cipher is [A-Z0-9]' <<<"$$out" && ! grep -q 'Cipher is (NONE)' <<<"$$out"; then echo "FAIL  TLS 1.1 accepted"; fail=1; \
 	else echo "SKIP  TLS 1.1 probe inconclusive"; fi; \
-	ing=$$({ $(K) get ingress -o name; $(K) get ingressroutes.traefik.io -o name 2>/dev/null; $(K) get httproutes.gateway.networking.k8s.io -o name 2>/dev/null; } | wc -l | tr -d ' '); \
+	ing=$$({ $(K) get ingress -o name; $(K) get ingressroutes.traefik.io -o name 2>/dev/null || true; $(K) get httproutes.gateway.networking.k8s.io -o name 2>/dev/null || true; } | wc -l | tr -d ' '); \
 	ext=$$($(K) get svc -o jsonpath='{range .items[?(@.spec.type!="ClusterIP")]}{.metadata.name} {end}'); \
 	if [ "$$ing" = 0 ] && [ -z "$$ext" ]; then echo "PASS  no Ingress / IngressRoute / HTTPRoute / NodePort / LoadBalancer in namespace $(NS)"; else echo "FAIL  exposed: ingresses=$$ing services=$$ext"; fail=1; fi; \
 	if [ "$(CLUSTER)" = vm ]; then \
