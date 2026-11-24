@@ -123,7 +123,7 @@ test: ca ## Verify CA-validated HTTPS, health, TLS >= 1.2, and that n8n is not p
 	if [ "$$code" = 200 ] && grep -qi 'n8n' $(STATE)/index.html; then echo "PASS  editor UI served (HTTP $$code)"; else echo "FAIL  editor UI (HTTP $$code)"; fail=1; fi; \
 	if $(K) get secret $(RELEASE)-owner >/dev/null 2>&1; then \
 	  st=$$($$c https://$(N8N_HOST):$(TEST_PORT)/rest/settings); \
-	  setup=$$(jq -r '.data.userManagement.showSetupOnFirstLoad // "unknown"' <<<"$$st"); \
+	  setup=$$(jq -r '.data.userManagement.showSetupOnFirstLoad' <<<"$$st"); \
 	  if [ "$$setup" = false ]; then echo "PASS  pre-created owner provisioned (setup screen bypassed)"; \
 	  else echo "FAIL  owner setup still pending (showSetupOnFirstLoad=$$setup)"; fail=1; fi; \
 	  email=$$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.email}' | base64 -d); \
