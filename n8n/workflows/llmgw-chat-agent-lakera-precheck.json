@@ -259,25 +259,5 @@
       }
     }
   ],
-  "nodeGroups": [
-    {
-      "id": "afcc08ef-bed2-45f1-827f-118d9001050e",
-      "name": "Lakera Guard Pre-Check",
-      "nodeNames": [
-        "Lakera Guard Config",
-        "Check Lakera Guard",
-        "Lakera Flagged?"
-      ],
-      "description": "Reads Lakera project ID, calls Lakera Guard v2 API, and routes flagged prompts."
-    },
-    {
-      "id": "49a6b61a-3ad4-40e1-a4db-b1ff5a6e5d91",
-      "name": "Guarded AI Agent",
-      "nodeNames": [
-        "AI Agent",
-        "OpenAI Chat Model"
-      ],
-      "description": "Forwards unflagged prompts to the AI Agent via the llmgw gateway."
-    }
-  ]
+  "nodeGroups": []
 }
