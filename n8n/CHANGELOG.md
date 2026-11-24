@@ -2,6 +2,12 @@
 
 All notable changes to `lab-ai-guardrails-n8n/n8n`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.1] - 2026-11-24
+
+### Added
+- `workflows/llmgw-chat-agent-lakera-precheck.json`: forked chat agent workflow with an upfront Lakera Guard v2 API check (`POST https://api.lakera.ai/v2/guard`) that replies `"lakera says there is issue."` when flagged before calling the AI Agent.
+- `make llm-connect` now supports multiple `WORKFLOWS` (pre-installing both lab chat workflows by default, keeping `WORKFLOW=` backward-compatible) and pre-populates the shared `LakeraAPI` Bearer credential (`dwOBu8Lap8nw2gG9`, also used by `Prompt Roulette V2`) and `lakera_project_id` in-memory from `llmgw-provider-keys`.
+
 ## [0.5.0] - 2026-11-24
 
 ### Added

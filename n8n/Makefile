@@ -28,7 +28,8 @@ HELM_ARGS ?=
 GW_NS     ?= llmgw
 GW_REL    ?= llmgw
 LLM_MODEL ?= google/gemma-4-31b-it:free
-WORKFLOW  ?= workflows/llmgw-chat-agent.json
+WORKFLOW  ?=
+WORKFLOWS ?= $(or $(WORKFLOW),workflows/llmgw-chat-agent.json workflows/llmgw-chat-agent-lakera-precheck.json)
 # Lab workflows stored locally in workflows/ and imported automatically on `make up`
 IMPORT_WORKFLOWS ?= workflows/get-public-ip.json workflows/prompt-roulette.json
 
@@ -40,7 +41,7 @@ K       = kubectl -n $(NS)
 
 help: ## Show targets
 	@echo "  Cluster: $(CLUSTER)   (CLUSTER=vm | docker | kind)"; echo
-	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-11s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-16s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 
 addons: ## Ensure cert-manager (MicroK8s addon on vm, Helm chart on docker/kind; part of up)
 	@$(PREFLIGHT)
@@ -77,9 +78,9 @@ passwd: ## Show the pre-created n8n owner email and generated password
 	 pw=$$($(K) get secret $(RELEASE)-owner -o jsonpath='{.data.password}' | base64 -d); \
 	 printf "  %-10s %s\n" Email "$$email" Password "$$pw"
 
-llm-connect: ## Wire n8n to in-cluster llmgw: CA trust, credential "llmgw (Lakera-guarded)", import WORKFLOW
+llm-connect: ## Wire n8n to in-cluster llmgw: CA trust, credentials, import WORKFLOWS
 	@$(PREFLIGHT)
-	@scripts/llm-connect.sh $(NS) $(RELEASE) $(GW_NS) $(GW_REL) $(WORKFLOW)
+	@scripts/llm-connect.sh $(NS) $(RELEASE) $(GW_NS) $(GW_REL) $(WORKFLOWS)
 	@$(MAKE) --no-print-directory up >/dev/null && echo "n8n restarted with the llmgw CA trusted. Open $(URL) (make tunnel)."
 
 llm-test: ## From inside the n8n pod: TLS, key scope, benign vs injection via Lakera, Responses API refused

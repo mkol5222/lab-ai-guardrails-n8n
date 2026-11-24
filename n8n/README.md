@@ -42,14 +42,14 @@ ClusterIP and there is no Ingress.
 | Target | What it does |
 |---|---|
 | `make up` | Enables the cert-manager addon if it is missing, runs `helm upgrade --install --wait`, waits for the certificate, restarts n8n if the certificate was renewed, imports the bundled lab workflows (`get-public-ip.json`, `prompt-roulette.json`), exports the CA and prints `info` |
-| `make import-workflows` | Imports the local workflows in `IMPORT_WORKFLOWS` (`workflows/get-public-ip.json`, `workflows/prompt-roulette.json`) into the running n8n pod (idempotent by workflow ID). `Prompt Roulette V2` expects an HTTP Bearer Auth credential named `LakeraAPI` configured in n8n |
+| `make import-workflows` | Imports the local workflows in `IMPORT_WORKFLOWS` (`workflows/get-public-ip.json`, `workflows/prompt-roulette.json`) into the running n8n pod (idempotent by workflow ID). `Prompt Roulette V2` uses the HTTP Bearer Auth credential `LakeraAPI` (populated automatically by `make llm-connect`, or configurable manually in n8n) |
 | `make down` | Uninstalls the release. **Keeps** the data PVC, owner secret and encryption key, so the next `make up` brings back your workflows, credentials and login. `PURGE=1` deletes the namespace and everything in it |
 | `make info` | URL, chart and app version, certificate SANs and expiry, PVC, exposure, owner login email, pod |
-| `make test` | Uses its own temporary port-forward on port 18443. Checks `/healthz`, the editor UI, pre-created owner provisioning and login over HTTPS **verified against the private CA**. Checks that the server rejects TLS 1.1, that the namespace has no Ingress, IngressRoute, HTTPRoute, NodePort or LoadBalancer, and that the VM's public IP does not present n8n's certificate |
+| `make test` | Uses its own temporary port-forward on port 18443. Checks `/healthz`, the editor UI, pre-created owner provisioning and login, and `/mcp-server/http` auth over HTTPS **verified against the private CA**. Checks that the server rejects TLS 1.1, that the namespace has no Ingress, IngressRoute, HTTPRoute, NodePort or LoadBalancer, and that the VM's public IP does not present n8n's certificate |
 | `make tunnel` | `kubectl port-forward` on `127.0.0.1:8443` to the n8n Service |
 | `make ca` | Exports the CA to `.state/<cluster>/ca.crt` |
 | `make passwd` | Prints the pre-created owner email (`guru@example.com`) and generated password from Secret `<release>-owner` |
-| `make llm-connect` | Connects n8n to `../llmgw`: copies the CA, creates the credential (scoped key), imports `WORKFLOW` and restarts n8n |
+| `make llm-connect` | Connects n8n to `../llmgw`: copies the CA, creates the `llmgw (Lakera-guarded)` and `LakeraAPI` credentials, imports `WORKFLOWS` (both lab chat workflows) and restarts n8n |
 | `make llm-test` | Runs from **inside the n8n pod**: verified TLS, key scope, a benign prompt answered, the injection blocked by Lakera, `/v1/responses` refused, the key unable to mint keys, and a NetworkPolicy probe from another namespace |
 
 Variables: `PORT=8443`, `N8N_HOST=n8n.localhost`, `NS=n8n`, `RELEASE=n8n`, and `HELM_ARGS="--set extraEnv.N8N_LOG_LEVEL=debug"`.
@@ -60,8 +60,10 @@ If you change `PORT` or `N8N_HOST`, run `make up` again, because n8n renders its
 ## Using the in-cluster LLM gateway (llmgw)
 
 n8n's AI nodes can use [`../llmgw`](../llmgw), the LiteLLM gateway with Check Point Lakera Guard, without leaving the
-cluster. The workflow [`workflows/llmgw-chat-agent.json`](workflows/llmgw-chat-agent.json) is a reusable Chat Trigger, AI Agent
-and OpenAI Chat Model setup.
+cluster. Two chat agent workflows are pre-installed by `make llm-connect`:
+
+- [`workflows/llmgw-chat-agent.json`](workflows/llmgw-chat-agent.json) — Chat Trigger → AI Agent → OpenAI Chat Model through `llmgw` (gateway-enforced Lakera Guard).
+- [`workflows/llmgw-chat-agent-lakera-precheck.json`](workflows/llmgw-chat-agent-lakera-precheck.json) — fork adding an upfront `POST https://api.lakera.ai/v2/guard` check (Bearer Auth credential `LakeraAPI`, shared with `Prompt Roulette V2`, plus `lakera_project_id`) that replies `"lakera says there is issue."` if flagged before reaching the AI Agent. `make llm-connect` pre-populates the credential and project ID from `llmgw-provider-keys` in-memory (no secrets are stored in the JSON file); either can be overridden in the UI.
 
 ```bash
 make -C ../llmgw up CLUSTER=docker                     # gateway (with Postgres for scoped keys)
