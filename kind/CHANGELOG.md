@@ -15,6 +15,8 @@ All notable changes to `lab-ai-guardrails-n8n/kind` and `.devcontainer`. Format:
   (`make n8n-passwd`), so no second terminal is needed.
 
 ### Fixed
+- `LAB-DEVCONTAINER-LOCAL.md` cleanup: steps 4 and 5 no longer fail with "'docker stop' requires at least 1 argument" (or a
+  `docker inspect` error) when VS Code has already stopped the container, or it is already gone.
 - `make -C kind up` failed on devcontainer restart with `Error from server (Forbidden): unknown`. Docker-in-Docker restarts the
   kind node on its own, and `kubectl wait` ran while the API server was still answering 403 before authorization was ready. `up` now
   waits up to 180s for `/readyz` before waiting for the node.

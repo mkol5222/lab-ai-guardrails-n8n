@@ -143,17 +143,20 @@ make -C kind down
 
 **4. Stop the devcontainer.** VS Code: **⇧⌘P → Dev Containers: Reopen Folder Locally**, then **[Mac]**:
 ```bash
-docker stop $(docker ps -q --filter label=devcontainer.local_folder=$HOME/github/lab-ai-guardrails-n8n)
+C=$(docker ps -q --filter label=devcontainer.local_folder=$HOME/github/lab-ai-guardrails-n8n)
+if [ -n "$C" ]; then docker stop $C; else echo "Devcontainer already stopped."; fi
 ```
-A stopped container uses no CPU or RAM. The next **Reopen in Container** starts it again in seconds, along with the kind cluster.
+VS Code usually stops it when you close the window, so "already stopped" is normal. A stopped container uses no CPU or RAM. The next **Reopen in Container** starts it again in seconds, along with the kind cluster.
 
 **5. Remove everything, including disk.** **[Mac]** This deletes the container, its Docker-in-Docker volume (the images and
 cluster data from inside the container) and the built image (~1.5 GB):
 ```bash
 F=$HOME/github/lab-ai-guardrails-n8n
 C=$(docker ps -aq --filter label=devcontainer.local_folder=$F)
-V=$(docker inspect $C --format '{{range .Mounts}}{{if eq .Destination "/var/lib/docker"}}{{.Name}}{{end}}{{end}}')
-docker rm -f $C && docker volume rm $V
+if [ -n "$C" ]; then
+  V=$(docker inspect $C --format '{{range .Mounts}}{{if eq .Destination "/var/lib/docker"}}{{.Name}}{{end}}{{end}}')
+  docker rm -f $C && { [ -z "$V" ] || docker volume rm $V; }
+else echo "No devcontainer for $F."; fi
 docker images -q 'vsc-lab-ai-guardrails-n8n-*' | xargs -r docker rmi
 rm -rf $F/.state/kind.kubeconfig $F/n8n/.state/kind $F/llmgw/.state/kind $F/nginx/.state/kind
 ```
