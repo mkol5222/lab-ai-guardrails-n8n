@@ -70,9 +70,12 @@ make -C n8n llm-test                  # 7x PASS, from inside the n8n pod
 
 ## 5. Open n8n in the Mac browser
 
-**[container]**, in a second terminal (**+**), leave this running:
+**[container]** `make up` already started the tunnel in the background (tmux session `n8n-tunnel`) and printed the URL and login. It
+restarts itself when n8n restarts. To check, restart or stop it:
 ```bash
-make n8n-tunnel            # same as: make -C n8n tunnel
+make n8n-tunnel            # starts it, or restarts it if it doesn't answer; no-op when healthy
+make n8n-tunnel-status     # tmux session, port 8443, CA-verified /healthz
+make n8n-tunnel-logs       # last 50 lines (FOLLOW=1 follows); make n8n-tunnel-stop ends it
 ```
 VS Code forwards port **8443** to the Mac: the **Ports** tab shows "n8n".
 
@@ -111,8 +114,9 @@ Open **https://n8n.localhost:8443/** and sign in with the email and password fro
 
 | Symptom | Fix |
 |---|---|
-| Browser can't connect | The tunnel dropped (for example after `llm-connect`). Restart `make -C n8n tunnel` and check the Ports tab |
+| Browser can't connect | `make n8n-tunnel-status`; `make n8n-tunnel` restarts it (`make n8n-tunnel-logs` shows why it dropped). Check the Ports tab |
 | `Cluster 'kind' not reachable` | `make -C kind up` |
+| `Prompt Roulette V2` fails in `Get Split Info`: "The connection to the server was closed unexpectedly" | The workflow pulls a random test prompt from the public Hugging Face dataset API (`datasets-server.huggingface.co`). Something on the host resets that TLS connection, usually web filtering by server name that applies to Docker Desktop traffic only (the same URL can work from the Mac browser). Check from the container: `curl -sS -o /dev/null -w "%{http_code}\n" "https://datasets-server.huggingface.co/size?dataset=OpenSafetyLab%2FSalad-Data"`. A `200` means it is reachable; an `SSL_ERROR_SYSCALL` or reset means it is blocked. Fixes: restart Docker Desktop after a network change, check Settings → Resources → Proxies, ask your admin to allow the host for container traffic, or run the lab in Codespaces. The other workflows don't need Hugging Face |
 | `HTTP 429` from a model | Free-tier rate limit; retry (the gateway falls back to `openrouter/free`) |
 | The injection is not blocked | Turn on prompt-attack detection in the Lakera project |
 | Build or cluster is slow, or pods are Pending | Give Docker Desktop more CPU and RAM (Settings → Resources) |

@@ -26,7 +26,14 @@ up: ## Create the kind cluster (or start it again after a container restart); id
 	 fi
 	@mkdir -p $(dir $(KUBECONFIG_FILE)) && chmod 700 $(dir $(KUBECONFIG_FILE))
 	@(umask 077; kind get kubeconfig --name $(KIND_CLUSTER) > $(KUBECONFIG_FILE))
-	@KUBECONFIG=$(KUBECONFIG_FILE) kubectl wait node --all --for=condition=Ready --timeout=180s >/dev/null
+	@# After a container restart Docker-in-Docker restarts the node itself; its API server answers 403 until authz is up.
+	@export KUBECONFIG=$(KUBECONFIG_FILE); \
+	 ready=; for i in $$(seq 90); do \
+	   if kubectl get --raw /readyz --request-timeout=5s >/dev/null 2>&1; then ready=1; break; fi; \
+	   [ $$i = 1 ] && echo -n "Waiting for the kind API server"; echo -n .; sleep 2; \
+	 done; [ $$i = 1 ] || echo; \
+	 [ -n "$$ready" ] || { echo "kind API server not ready after 180s"; exit 1; }; \
+	 kubectl wait node --all --for=condition=Ready --timeout=180s >/dev/null
 	@$(MAKE) --no-print-directory info
 
 down: ## Delete the kind cluster and everything in it

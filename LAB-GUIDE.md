@@ -123,6 +123,7 @@ make -C n8n llm-test                  # expect PASS, run from inside the n8n pod
 | `HTTP 429` from a model | Free-tier rate limit. The gateway falls back to `openrouter/free` automatically, so retry |
 | The injection is not blocked | Turn on prompt-attack detection in your Lakera project |
 | Agent error about the Responses API | In the OpenAI Chat Model node, keep **Use Responses API** off |
+| `Prompt Roulette V2` fails in `Get Split Info`: "The connection to the server was closed unexpectedly" | The workflow pulls a random test prompt from the public Hugging Face dataset API (`datasets-server.huggingface.co`). Something on the host resets that TLS connection, usually web filtering by server name that applies to Docker Desktop traffic only (the same URL can work from the Mac browser). Check from the container: `curl -sS -o /dev/null -w "%{http_code}\n" "https://datasets-server.huggingface.co/size?dataset=OpenSafetyLab%2FSalad-Data"`. A `200` means it is reachable; an `SSL_ERROR_SYSCALL` or reset means it is blocked. Fixes: restart Docker Desktop after a network change, check Settings → Resources → Proxies, ask your admin to allow the host for container traffic, or run the lab in Codespaces. The other workflows don't need Hugging Face |
 
 ## Clean up
 

@@ -47,6 +47,7 @@ ClusterIP and there is no Ingress.
 | `make info` | URL, chart and app version, certificate SANs and expiry, PVC, exposure, owner login email, pod |
 | `make test` | Uses its own temporary port-forward on port 18443. Checks `/healthz`, the editor UI, pre-created owner provisioning and login, and `/mcp-server/http` auth over HTTPS **verified against the private CA**. Checks that the server rejects TLS 1.1, that the namespace has no Ingress, IngressRoute, HTTPRoute, NodePort or LoadBalancer, and that the VM's public IP does not present n8n's certificate |
 | `make tunnel` | `kubectl port-forward` on `127.0.0.1:8443` to the n8n Service |
+| `scripts/tunnel-bg.sh start\|status\|logs\|stop` | Same tunnel in a background tmux session that restarts itself; used by the top-level `make n8n-tunnel*` (devcontainer) |
 | `make ca` | Exports the CA to `.state/<cluster>/ca.crt` |
 | `make passwd` | Prints the pre-created owner email (`guru@example.com`) and generated password from Secret `<release>-owner` |
 | `make llm-connect` | Connects n8n to `../llmgw`: copies the CA, creates the `llmgw (Lakera-guarded)` and `LakeraAPI` credentials, imports `WORKFLOWS` (both lab chat workflows) and restarts n8n |
@@ -139,3 +140,4 @@ Credentials exported with `export:credentials` stay encrypted with the instance 
 - **`Cluster not reachable`:** start `make -C ../vm tunnel`.
 - **The browser can't connect:** `make tunnel` isn't running, or the pod restarted. Restart `make tunnel`.
 - **The pod isn't ready:** run `kubectl -n n8n logs deploy/n8n` and `kubectl -n n8n describe pod`.
+- **`Prompt Roulette V2` fails in `Get Split Info` ("connection closed unexpectedly"):** the host resets TLS to `datasets-server.huggingface.co`, usually web filtering that applies to Docker traffic only. Check with `curl` from the container or pod. Restart Docker Desktop, check its proxy settings, ask your admin to allow the host, or use Codespaces. Other workflows are unaffected.

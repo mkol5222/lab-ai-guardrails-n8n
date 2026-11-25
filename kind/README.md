@@ -19,7 +19,7 @@ the container already sets it.
 
 | Target | What it does |
 |---|---|
-| `make -C kind up` | Creates `mk8s-lab` (single node, API on 127.0.0.1, no host port mappings) or starts its stopped node. Writes `.state/kind.kubeconfig` (0600) |
+| `make -C kind up` | Creates `mk8s-lab` (single node, API on 127.0.0.1, no host port mappings) or starts its stopped node, then waits for the API server (`/readyz`) and the node. Writes `.state/kind.kubeconfig` (0600) |
 | `make -C kind info` | Node, version, architecture, Helm releases |
 | `make -C kind k9s` | k9s on the cluster |
 | `make -C kind down` | Deletes the cluster and everything in it |

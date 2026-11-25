@@ -6,11 +6,12 @@ SHELL         := /bin/bash
 .DEFAULT_GOAL := help
 
 KUBECONFIG_KIND := $(CURDIR)/.state/kind.kubeconfig
+TUNNEL_BG       := $(CURDIR)/n8n/scripts/tunnel-bg.sh
 
-.PHONY: help check-devcontainer up n8n-passwd n8n-tunnel down
+.PHONY: help check-devcontainer up n8n-passwd n8n-tunnel n8n-tunnel-status n8n-tunnel-logs n8n-tunnel-stop down
 
 help: ## Show targets
-	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-12s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN{FS=":.*## "} /^[a-z0-9-]+:.*## /{printf "  \033[1m%-18s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
 
 check-devcontainer:
 	@if [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ] && [ -z "$${REMOTE_CONTAINERS:-}$${CODESPACES:-}$${DEVCONTAINER:-}" ]; then \
@@ -50,41 +51,38 @@ up: check-devcontainer ## Bring up the full lab in the devcontainer (kind -> n8n
 	@$(MAKE) --no-print-directory -C n8n llm-connect CLUSTER=kind
 	@$(MAKE) --no-print-directory -C n8n llm-test CLUSTER=kind
 	@echo
-	@echo "==> [5/5] Lab is ready! How to open n8n in your browser:"
-	@owner=$$(KUBECONFIG="$(KUBECONFIG_KIND)" kubectl -n n8n get secret n8n-owner -o jsonpath='{.data.email}' 2>/dev/null | base64 -d || true); \
-	 owner=$${owner:-guru@example.com}; \
-	 echo; \
-	 echo "  1. In a second container terminal (+), start the n8n tunnel and leave it running:"; \
-	 echo "       make n8n-tunnel          # (same as: make -C n8n tunnel)"; \
-	 echo; \
-	 if [ -n "$${CODESPACE_NAME:-}" ]; then \
-	   url="https://$${CODESPACE_NAME}-8443.$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/"; \
-	   echo "  2. Open n8n via the Ports tab globe icon on \"n8n\" (port 8443), or:"; \
-	   echo "       $$url"; \
-	   echo "     (GitHub terminates TLS with its own cert — no CA trust step needed; keep port Private.)"; \
-	   echo; \
-	   echo "  3. Sign in with the pre-created owner account:"; \
+	@echo "==> [5/5] Starting the n8n tunnel (background tmux session)..."
+	@$(TUNNEL_BG) start || echo "  Tunnel not started. Foreground fallback, in a second terminal: make -C n8n tunnel"
+	@echo
+	@echo "==> Lab is ready! Open n8n in your browser:"
+	@if [ -n "$${CODESPACE_NAME:-}" ]; then \
+	   echo "  URL       https://$${CODESPACE_NAME}-8443.$${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}/"; \
+	   echo "            (or the Ports tab globe icon on \"n8n\"; GitHub's own cert, no CA step; keep the port Private)"; \
 	 else \
-	   echo "  2. On your Mac (once per lab build; each cluster has its own CA), trust the n8n CA:"; \
-	   echo "       sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \\"; \
-	   echo "         ~/github/lab-ai-guardrails-n8n/n8n/.state/kind/ca.crt"; \
-	   echo "     (Adjust the path if you cloned the repo elsewhere. VS Code forwards port 8443 automatically.)"; \
-	   echo; \
-	   echo "  3. Open in your Mac browser:"; \
-	   echo "       https://n8n.localhost:8443/"; \
-	   echo; \
-	   echo "  4. Sign in with the pre-created owner account:"; \
-	 fi; \
-	 echo "       Email:     $$owner"; \
-	 echo "       Password:  run 'make n8n-passwd'"; \
-	 echo; \
-	 echo "  Demo: open Workflows -> \"llmgw chat agent (Lakera-guarded)\" -> Open chat."
+	   echo "  URL       https://n8n.localhost:8443/   (VS Code forwards port 8443 to the Mac)"; \
+	   echo "  Trust CA  once per lab build, on the Mac (each cluster has its own CA):"; \
+	   echo "              sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain \\"; \
+	   echo "                ~/github/lab-ai-guardrails-n8n/n8n/.state/kind/ca.crt   (adjust if cloned elsewhere)"; \
+	 fi
+	@$(MAKE) --no-print-directory n8n-passwd
+	@echo
+	@echo "  Tunnel: make n8n-tunnel-status | n8n-tunnel-logs | n8n-tunnel-stop   (it restarts itself when n8n restarts)"
+	@echo "  Demo:   Workflows -> \"llmgw chat agent (Lakera-guarded)\" -> Open chat."
 
 n8n-passwd: ## Show the pre-created n8n owner email and generated password
 	@$(MAKE) --no-print-directory -C n8n passwd
 
-n8n-tunnel: ## Forward n8n HTTPS to 127.0.0.1:8443 (keep open; Ctrl+C ends)
-	@$(MAKE) --no-print-directory -C n8n tunnel
+n8n-tunnel: ## n8n on 127.0.0.1:8443 in a background tmux session (auto-restarts; rerun restarts it if unhealthy)
+	@$(TUNNEL_BG) start
+
+n8n-tunnel-status: ## Background n8n tunnel: tmux session, port, HTTPS health
+	@$(TUNNEL_BG) status
+
+n8n-tunnel-logs: ## Background n8n tunnel log (TAIL=50; FOLLOW=1 follows)
+	@$(TUNNEL_BG) logs
+
+n8n-tunnel-stop: ## Stop the background n8n tunnel
+	@$(TUNNEL_BG) stop
 
 down: ## Stop n8n and llmgw (PURGE=1 also deletes data and stored keys; kind cluster stays up)
 	@$(MAKE) --no-print-directory -C n8n down PURGE=$(PURGE)

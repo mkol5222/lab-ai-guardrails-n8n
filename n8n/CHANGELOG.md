@@ -2,6 +2,18 @@
 
 All notable changes to `lab-ai-guardrails-n8n/n8n`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.2] - 2026-11-25
+
+### Added
+- `scripts/tunnel-bg.sh start|status|logs|stop`: `make tunnel` in a tmux session under a loop that restarts the port-forward
+  when it exits (for example after `llm-connect` restarts the pod). Health is `/healthz` over TLS verified with the n8n CA.
+  Log in the gitignored `.state/n8n-tunnel.log` (0600). Used by the top-level `make n8n-tunnel*` targets.
+
+### Documentation
+- Troubleshooting for `Prompt Roulette V2` failing in `Get Split Info`: host web filtering can reset TLS to
+  `datasets-server.huggingface.co` for Docker Desktop traffic while the Mac itself can reach it. Includes a `curl` check and fixes
+  (README, `LAB-GUIDE.md`, `LAB-DEVCONTAINER-LOCAL.md`).
+
 ## [0.5.1] - 2026-11-24
 
 ### Added

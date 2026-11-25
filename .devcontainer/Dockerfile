@@ -8,7 +8,7 @@ ARG K9S_VERSION=v0.51.0
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-      make jq openssl curl ca-certificates netcat-openbsd dnsutils bash-completion \
+      make jq openssl curl ca-certificates netcat-openbsd dnsutils bash-completion tmux \
  && rm -rf /var/lib/apt/lists/*
 
 COPY install-tools.sh /tmp/install-tools.sh

@@ -58,13 +58,16 @@ make -C n8n llm-test                  # PASS, from inside the n8n pod
 
 ## 5. Open n8n
 
-In a second terminal (**+**), leave this running:
+`make up` already started the tunnel in the background (tmux session `n8n-tunnel`, restarts itself when n8n restarts)
+and printed the URL and login. To check, restart or stop it:
 
 ```bash
-make n8n-tunnel                # same as: make -C n8n tunnel
+make n8n-tunnel                # starts it, or restarts it if it doesn't answer; no-op when healthy
+make n8n-tunnel-status         # tmux session, port 8443, CA-verified /healthz
+make n8n-tunnel-logs           # last 50 lines (FOLLOW=1 follows); make n8n-tunnel-stop ends it
 ```
 
-Get the pre-created owner login (`guru@example.com` + generated password):
+Show the pre-created owner login again (`guru@example.com` + generated password):
 
 ```bash
 make n8n-passwd
@@ -96,7 +99,7 @@ trust step** is needed. Sign in with the email and password from `make n8n-passw
 
 | Symptom | Fix |
 |---|---|
-| n8n page doesn't load or shows 502 | The tunnel isn't running or dropped (for example after `llm-connect`). Restart `make -C n8n tunnel` |
+| n8n page doesn't load or shows 502 | `make n8n-tunnel-status`; `make n8n-tunnel` restarts it (`make n8n-tunnel-logs` shows why it dropped) |
 | "Connection lost" banner in n8n | Re-run `make -C n8n up` so n8n picks up the codespace URL, then reload |
 | `Using ... from the environment` but a key is rejected | Fix the secret in GitHub Settings → Codespaces, rebuild the codespace, or run `PROMPT=1 make -C llmgw secrets` |
 | `HTTP 429` from a model | Free-tier rate limit; retry (the gateway falls back to `openrouter/free`) |

@@ -2,6 +2,23 @@
 
 All notable changes to `lab-ai-guardrails-n8n/kind` and `.devcontainer`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.1] - 2026-11-25
+
+### Added
+- `tmux` in the devcontainer image (Ubuntu package; rebuild the container to get it).
+- Top-level `make n8n-tunnel` runs the n8n tunnel in a background tmux session (`n8n/scripts/tunnel-bg.sh`). A second run
+  is a no-op when n8n answers, and restarts the session otherwise. New `make n8n-tunnel-status`, `n8n-tunnel-logs`
+  (`TAIL=`, `FOLLOW=1`) and `n8n-tunnel-stop`.
+
+### Changed
+- `make up` ends by starting the background tunnel and printing the URL, CA trust step (local only) and the owner login
+  (`make n8n-passwd`), so no second terminal is needed.
+
+### Fixed
+- `make -C kind up` failed on devcontainer restart with `Error from server (Forbidden): unknown`. Docker-in-Docker restarts the
+  kind node on its own, and `kubectl wait` ran while the API server was still answering 403 before authorization was ready. `up` now
+  waits up to 180s for `/readyz` before waiting for the node.
+
 ## [0.2.0] - 2026-11-24
 
 ### Added
