@@ -43,5 +43,16 @@ owner:
 mcp:
   enabled: true
 
+# nginx sidecar in front of n8n for forwarding proxies that rewrite the browser's Origin header.
+# GitHub Codespaces forwards https://<codespace>-<port>.app.github.dev with X-Forwarded-Host set to that name
+# but Origin rewritten to https://localhost:<port>, so n8n's push/websocket origin check always fails
+# (chat and live editor updates break). The sidecar terminates TLS with the same certificate, pins
+# X-Forwarded-Host to `host` and maps ONLY the listed origins to the canonical origin; any other Origin
+# passes through unchanged, so n8n still rejects cross-site requests. Upstream TLS to n8n is verified.
+originProxy:
+  enabled: false
+  allowedOrigins: []          # e.g. ["https://localhost:8443"] (set by `make up` in Codespaces)
+  image: nginxinc/nginx-unprivileged:1.31.7-alpine
+
 # Extra n8n environment variables (https://docs.n8n.io/hosting/configuration/environment-variables/)
 extraEnv: {}

@@ -2,6 +2,25 @@
 
 All notable changes to `lab-ai-guardrails-n8n/n8n`. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-11-25
+
+### Fixed
+- Codespaces: the chat panel and live editor updates broke because GitHub's port forwarder rewrites `Origin` to
+  `https://localhost:8443` while sending `X-Forwarded-Host: <codespace>-8443.app.github.dev`, so n8n refused every push
+  connection ("Origin header does NOT match the expected origin").
+
+### Added
+- Chart v0.4.0: optional `originProxy` nginx sidecar (`nginx-unprivileged:1.31.7-alpine`, TLS 1.2/1.3, non-root, read-only
+  root filesystem). It pins `X-Forwarded-Host`, maps only the `allowedOrigins` to the canonical origin, proxies websockets, and
+  connects to n8n over loopback TLS verified with the private CA. The Service targets the sidecar when it is enabled.
+  `make up` turns it on only when `CODESPACE_NAME` is set.
+
+### Verified
+- Local devcontainer (rebuilt from scratch, arm64): n8n deploys without the sidecar (one container, Service targets n8n),
+  `make -C n8n test` 7 PASS + 1 SKIP, background tunnel healthy.
+- Codespaces: the pod ran n8n + origin-proxy (2/2), browser traffic passed through the sidecar, and n8n logged no origin
+  errors. The end-to-end chat check in a fresh codespace is still pending.
+
 ## [0.5.2] - 2026-11-25
 
 ### Added

@@ -37,6 +37,19 @@ Docker Desktop's storage class is used automatically. Whether NetworkPolicy is e
 kind-mode kindnet version may not enforce it. Docker Desktop publishes nothing on the Mac either way: the Service is
 ClusterIP and there is no Ingress.
 
+### GitHub Codespaces
+
+In a codespace (`CODESPACE_NAME` is set) `make up` uses the codespace URL `https://<codespace>-8443.app.github.dev/` and adds
+an **origin-proxy sidecar** (chart value `originProxy`, nginx in the n8n pod). GitHub's port forwarder sends
+`X-Forwarded-Host: <codespace>-8443.app.github.dev` but rewrites the browser's `Origin` to `https://localhost:8443`. n8n
+compares the two for its push websocket, so without the sidecar every push connection is refused ("Origin header does NOT match
+the expected origin" in the log), and the chat panel and live editor updates break.
+
+The sidecar terminates TLS with the same certificate, sets `X-Forwarded-Host` to the codespace name, and maps **only** the
+allowlisted origin `https://localhost:8443` to the codespace origin. Any other `Origin` passes through unchanged, so n8n still
+rejects cross-site requests. It connects to n8n over loopback TLS, verified with the private CA. Outside Codespaces the sidecar
+is off, and the Service points at n8n directly as before.
+
 ## Targets
 
 | Target | What it does |

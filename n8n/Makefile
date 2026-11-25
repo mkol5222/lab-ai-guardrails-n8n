@@ -18,7 +18,10 @@ RELEASE   ?= n8n
 ifneq ($(CODESPACE_NAME),)
   N8N_HOST  ?= $(CODESPACE_NAME)-$(or $(PORT),8443).$(GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN)
   URL_PORT  := 443
-  ENV_ARGS  := --set-string extraEnv.N8N_PROXY_HOPS=1
+  # GitHub's forwarder rewrites Origin to https://localhost:<port> while X-Forwarded-Host keeps the codespace
+  # name, which fails n8n's push/websocket origin check. The originProxy sidecar fixes the header (chart values).
+  ENV_ARGS  := --set-string extraEnv.N8N_PROXY_HOPS=1 --set originProxy.enabled=true \
+               --set-json 'originProxy.allowedOrigins=["https://localhost:$(or $(PORT),8443)"]'
 endif
 N8N_HOST  ?= n8n.localhost
 PORT      ?= 8443
