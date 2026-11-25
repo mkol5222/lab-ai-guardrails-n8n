@@ -100,6 +100,7 @@ trust step** is needed. Sign in with the email and password from `make n8n-passw
 | Symptom | Fix |
 |---|---|
 | n8n page doesn't load or shows 502 | `make n8n-tunnel-status`; `make n8n-tunnel` restarts it (`make n8n-tunnel-logs` shows why it dropped) |
+| Creation log ends with "Creating recovery container"; `make`, `kind` or `kubectl` missing | The image build failed, and you are in a bare Alpine recovery container. Read the build error in the creation log (**⇧⌘P → Codespaces: View Creation Log**), pull the fix, then **⇧⌘P → Codespaces: Rebuild Container** (or delete the codespace and create a new one) |
 | "Connection lost" banner in n8n | Re-run `make -C n8n up` so n8n picks up the codespace URL, then reload |
 | `Using ... from the environment` but a key is rejected | Fix the secret in GitHub Settings → Codespaces, rebuild the codespace, or run `PROMPT=1 make -C llmgw secrets` |
 | `HTTP 429` from a model | Free-tier rate limit; retry (the gateway falls back to `openrouter/free`) |

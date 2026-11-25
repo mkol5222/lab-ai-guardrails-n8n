@@ -15,6 +15,8 @@ All notable changes to `lab-ai-guardrails-n8n/kind` and `.devcontainer`. Format:
   (`make n8n-passwd`), so no second terminal is needed.
 
 ### Fixed
+- Devcontainer image build failed in Codespaces with exit code 141: `k9s version -s | head -1` in `install-tools.sh` could
+  SIGPIPE k9s under `set -o pipefail`. Now `awk 'NR==1'`. Verified with a `--no-cache` linux/amd64 build.
 - `LAB-DEVCONTAINER-LOCAL.md` cleanup: steps 4 and 5 no longer fail with "'docker stop' requires at least 1 argument" (or a
   `docker inspect` error) when VS Code has already stopped the container, or it is already gone.
 - `make -C kind up` failed on devcontainer restart with `Error from server (Forbidden): unknown`. Docker-in-Docker restarts the

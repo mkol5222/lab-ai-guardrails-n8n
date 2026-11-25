@@ -34,4 +34,5 @@ tar -xzf "$f" k9s; install -m 0755 k9s /usr/local/bin/k9s
 
 cd /; rm -rf "$tmp"
 kubectl version --client=true -o json | jq -r '"kubectl " + .clientVersion.gitVersion'
-helm version --short; kind version; k9s version -s | head -1
+# awk reads all input: `| head -1` can SIGPIPE k9s, and under pipefail that fails the build (exit 141).
+helm version --short; kind version; k9s version -s | awk 'NR==1'
